@@ -159,11 +159,11 @@ function filterLines (refs : vscodelc.Location[]) : Map<number,TPID[]> {
 }
 function insert(tpid : TPID ,lines : Map<number,TPID[]>, new_line :number){
 
-    if(lines.has(new_line-1)){
-        lines.get(new_line-1).push(tpid);
+    if(lines.has(new_line)){
+        lines.get(new_line).push(tpid);
     }
     else{
-        lines.set(new_line-1,[tpid]);
+        lines.set(new_line,[tpid]);
     }
 }
 function where_before(tpid : TPID ,lines : Map<number,TPID[]>, backup :number) : number{
@@ -186,11 +186,11 @@ function parse_new_lines(linesFile : string, lines : Map<number,TPID[]>) : Map<n
         let lineSplit = line.split(' ') // line cannot be traced at the start
         if(lineSplit.length>1){
             for(let tpid of lines.get(+lineSplit[0]-1)){
-                let new_line = +lineSplit[1];
+                let new_line = +lineSplit[1]-1;
                 if (tpid.before){
                     new_line = where_before(tpid,lines,new_line);
                 }
-                if(+lineSplit[0]==new_line){
+                if(+lineSplit[0]-1==new_line){
                     setDelete = false;
                     continue;
                 }
@@ -320,6 +320,7 @@ export function activate(context: vscode.ExtensionContext) {
     }));
     
     cleanFolder(cwd);
+    
 	context.subscriptions.push(vscode.commands.registerCommand('codelens', async (before : number, after:number) =>{
         let beforelog = toFile(before +1);
         let afterlog = toFile(after +1);
