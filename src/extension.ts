@@ -1,21 +1,27 @@
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient';
-import * as fs  from 'fs';
-import { DefinitionLink, DefinitionRequest, TextDocument, TextDocumentPositionParams, TextDocumentIdentifier, LocationLink, DeclarationRequest, ReferencesRequest, ReferenceParams, ReferenceContext, CodeLens, TypeDefinitionRequest, RequestType } from 'vscode-languageclient';
-import { TraceCodeLensProvider } from './codelens';
-import {TraceDataProvider} from "./treeDataProvider"
-import { dirname } from 'path';
+import * as fs from 'fs';
+import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, DiagnosticSeverity, Disposable } from 'vscode-languageclient';
+import { TraceDataProvider } from "./treeDataProvider"
+import { dirname, basename } from 'path';
 import { GDB } from './gdb'
-import {basename} from 'path'
+import { cleanFolder, findExecutables } from './FSutils'
+import { TraceMetaData, displayPossibleTracepoints, disableTP, TPID } from './trace-manipulation'
+import { TraceCodeLensProvider } from './codelens';
 
-const filePattern: string = '**/*.{' +
-['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';
+export const filePattern: string = '**/*.{' +
+    ['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';
 
-const cwd = "/home/pn/tests/c-lttng/gdb/";
-const linesFileName = "lines.json";
-const linesFilePath = cwd + linesFileName;
-const gdbScript = cwd + "launch-python.gdb"
+export const cwd = "/home/pn/tests/c-lttng/gdb/";
+export const linesFileName = "lines.json";
+export const linesFilePath = cwd + linesFileName;
+export const gdbScript = cwd + "launch-python.gdb"
+var lensProviderDisposable : Disposable
+var lensProvider : TraceCodeLensProvider
+var gdb : GDB
+
 const gdbpath = "/home/pn/git/binutils-gdb/gdb/gdb"
+
 /**
  * Method to get workspace configuration option
  * @param option name of the option (e.g. for clangd.path should be path)
@@ -41,8 +47,8 @@ class FileStatus {
         const path = vscode.window.activeTextEditor.document.fileName;
         const status = this.statuses.get(path);
         if (!status) {
-          this.statusBarItem.hide();
-          return;
+            this.statusBarItem.hide();
+            return;
         }
         this.statusBarItem.text = `clangd: ` + status.state;
         this.statusBarItem.show();
@@ -58,204 +64,33 @@ class FileStatus {
     }
 }
 
-class Context implements ReferenceContext{
-	includeDeclaration : boolean
-	constructor(includeDecl : boolean){
-		this.includeDeclaration = includeDecl
-	}
-}
-class ReferenceParam implements ReferenceParams{
-    position : vscode.Position
-    textDocument : TextDocumentIdentifier
-	context : vscode.ReferenceContext
-	constructor(uri : string, includeDecl : boolean = false ){
+class ReferenceParam implements ReferenceParams {
+    position: vscode.Position
+    textDocument: TextDocumentIdentifier
+    context: vscode.ReferenceContext
+
+    constructor(uri: string, includeDecl: boolean = false) {
         this.position = vscode.window.activeTextEditor.selection.start;
-		this.textDocument = TextDocumentIdentifier.create(uri)
-		this.context = new Context(includeDecl)
+        this.textDocument = TextDocumentIdentifier.create(uri)
+        this.context = { includeDeclaration: includeDecl }
     }
 }
 
-export interface TPID{
-    occurence : number
-    before : boolean
+function updateLensProvider(){
+    lensProviderDisposable.dispose();
+    lensProviderDisposable = vscode.languages.registerCodeLensProvider(
+        [{ scheme: 'file', pattern: filePattern }],
+        lensProvider
+    );
 }
-export interface TracedLine{
-    original : number
-    corrected? : number
-    modified? : boolean
-}
-export class TraceMetaData{
-    source : string
-    binary : string
-    varname : string
-    lines : TracedLine[] = []
-
-    constructor(source : string, binary : string, varname : string){
-        this.source = source;
-        this.binary = binary;
-        this.varname = varname;
-    }
-    populate(tpids : Map<number,TPID[]>){
-        for (const lineNb of tpids.keys()){
-            this.lines.push({original: lineNb + 1});
-        }
-    }
-}
-
-export function toFile(line : number) : string {
+export function toFile(line: number): string {
     let fileName = basename(vscode.window.activeTextEditor.document.fileName);
-    return  cwd + "log_"+ fileName + "_line_"+(line);
+    return cwd + "log_" + fileName + "_line_" + (line);
 }
-export function getLinesFile() :string {
+export function getLinesFile(): string {
     return linesFilePath;
 }
-function filterLines (refs : vscodelc.Location[]) : Map<number,TPID[]> {
-    var tplines = new Map<number,TPID[]>()
 
-	// +1 is because refs lines start at 0
-	for (const loc of refs) {
-        let line_before = loc.range.start.line;
-        if (tplines.has(line_before)){
-            tplines.get(line_before).push(
-                {occurence : line_before,before : true}
-           )
-        }
-        else{
-            tplines.set(line_before,[{occurence : line_before,before : true}])
-        }
-        let line_after = loc.range.start.line + 1;
-        if (tplines.has(line_after)){
-            tplines.get(line_after).push(
-                {occurence : line_before,before : false}
-           )
-        }
-        else{
-            tplines.set(line_after,[{occurence : line_before,before : false}])
-        }
-	}
-	return tplines;
-}
-function insert(tpid : TPID ,lines : Map<number,TPID[]>, new_line :number){
-
-    if(lines.has(new_line)){
-        lines.get(new_line).push(tpid);
-    }
-    else{
-        lines.set(new_line,[tpid]);
-    }
-}
-function where_before(tpid : TPID ,lines : Map<number,TPID[]>, backup :number) : number{
-    let bestLine = -1;
-    for(let lineWithTP of lines.keys()){
-        if (lineWithTP<tpid.occurence && lineWithTP>bestLine){
-            bestLine = lineWithTP;
-        }
-    }
-    if (bestLine == -1){
-        bestLine = backup
-    }
-    return bestLine;
-}
-function parse_new_lines(linesFile : string, lines : Map<number,TPID[]>) : Map<number,TPID[]>{
-    let file_content = fs.readFileSync(linesFile)
-    let string_content = file_content.toString().split('\n')
-    let setDelete = true;
-    for (let line of string_content){
-        let lineSplit = line.split(' ') 
-        if(lineSplit.length>1){ // line cannot be traced at the start
-            for(let tpid of lines.get(+lineSplit[0]-1)){
-                let new_line = +lineSplit[1]-1;
-                if (tpid.before){
-                    new_line = where_before(tpid,lines,new_line);
-                }
-                if(+lineSplit[0]-1==new_line){
-                    setDelete = false;
-                    continue;
-                }
-                insert(tpid,lines,new_line);
-                
-            }
-            if(setDelete){
-                lines.delete(+lineSplit[0]-1);
-            }
-            setDelete = true;
-        }
-    }
-    return lines
-}
-function correctTPLines(tpLines : Map<number, TPID[]>,lines : TracedLine[]) : Map<number, TPID[]> {
-    let setDelete = true;
-    let encountered :number[] = []
-    for (let tracedLine of lines){
-        encountered.push(tracedLine.corrected-1);
-        if(tracedLine.corrected != null && tracedLine.modified != null){
-            let new_line = tracedLine.corrected -1;
-            for(let tpid of tpLines.get(tracedLine.original-1)){
-                if (tpid.before){
-                    new_line = where_before(tpid,tpLines,new_line);
-                }
-                if(tracedLine.original-1==new_line){
-                    setDelete = false;
-                    continue;
-                }
-                insert(tpid,tpLines,new_line);
-                
-            }
-            if(setDelete){
-                tpLines.delete(tracedLine.original-1);
-            }
-        }
-        setDelete = true;
-    }
-    for (let tpLineIndex of tpLines.keys()){
-        if(encountered.indexOf(tpLineIndex)==-1 ){
-            tpLines.delete(tpLineIndex);
-        }
-    }
-    return tpLines;
-}
-function displayPossibleTracepoints(refs : vscodelc.Location[], metaData : TraceMetaData, gdb : GDB, uri : vscode.Uri) : number[]{
-    var tpLines = filterLines(refs);
-    metaData.populate(tpLines);
-    
-    fs.writeFileSync(linesFilePath,JSON.stringify(metaData)); 
-	gdb.can_insert(linesFilePath);
-    let linesFileContent = fs.readFileSync(linesFilePath).toString();
-    
-    let lines = JSON.parse(linesFileContent).lines;
-    // lines = parse_new_lines(linesFilePath,lines);
-    tpLines = correctTPLines(tpLines,lines);
-    vscode.languages.registerCodeLensProvider(
-            [{ scheme: 'file', pattern: filePattern }]
-            ,new TraceCodeLensProvider(tpLines,uri)
-        );
-
-	return [];
-}
-function findExecutables(currentDirectory : string) : string[]{
-    let executables : string[] = [];
-    let files = fs.readdirSync(currentDirectory);
-    for (let file of files){
-        let stat = fs.lstatSync(currentDirectory + file);
-        let mode = stat.mode.toString(8);
-        if (mode.length==6 && mode[0]=="1" && +mode[4]%2 == 1){ // executable file
-            executables.push(file)
-        }
-    }
-    executables.push("other");
-    return executables;
-}
-function cleanFolder(currentDirectory : string){
-    let files = fs.readdirSync(currentDirectory);
-    for (let file of files){
-        if(file.slice(0,4)=="log_"){
-            fs.unlinkSync(currentDirectory + file);
-        }
-        if(file == linesFileName || cwd+file == gdbScript){
-            fs.unlinkSync(currentDirectory + file);
-        }
-    }
-}
 /**
  *  this method is called when your extension is activate
  *  your extension is activated the very first time the command is executed
@@ -303,77 +138,65 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(clangdClient.start());
 
-    // context.subscriptions.push(vscode.commands.registerCommand('define', async () =>{
-    //     const uri =
-    //     vscode.Uri.file(vscode.window.activeTextEditor.document.fileName);
-    //     if (!uri) {
-    //     return;
-	// 	}
-    //     var tdpp = new ReferenceParam(uri.toString());
-    //     const loc = await clangdClient.sendRequest(DeclarationRequest.type,tdpp);
-    //     if (loc instanceof vscode.Location){
-    //         vscode.window.showInformationMessage("Location");
-    //     }
-        
-    //     if (LocationLink.is(loc)){
-    //         vscode.window.showInformationMessage("Location");
-    //     }
-    //     var a : DefinitionLink 
-    //     if (loc instanceof Array){
-    //         let a = loc[0]
-    //         if (vscodelc.Location.is(a)){
-	// 			vscode.window.showInformationMessage("Location[]");
-	// 		}
-    //         if (vscodelc.LocationLink.is(a))
-    //             vscode.window.showInformationMessage("LocationLink[]");
-    //     }
-    //     vscode.window.showInformationMessage(typeof loc);
-    // }));
-    
     cleanFolder(cwd);
 
-	context.subscriptions.push(vscode.commands.registerCommand('codelens', async (before : number, after:number) =>{
-        let beforelog = toFile(before +1);
-        let afterlog = toFile(after +1);
-        let beforeValue = +fs.readFileSync(beforelog).toString().split('\n')[0]
-        let values = fs.readFileSync(afterlog).toString().split('\n')
-        let afterValue = +values[values.length-2]
-        vscode.window.showInformationMessage("First value before : "+ beforeValue+ "\nLast value after : "+afterValue);
+    context.subscriptions.push(vscode.commands.registerCommand('codelens', async (tracepoint : TPID) => {
+
+        lensProvider.disable(tracepoint);
+        updateLensProvider();
     }));
-    
-	context.subscriptions.push(vscode.commands.registerCommand('segfault-trace', async () =>{
+
+    context.subscriptions.push(vscode.commands.registerCommand('segfault-trace', async () => {
         editor = vscode.window.activeTextEditor!;
         const uri = vscode.Uri.file(editor.document.fileName);
         var varname = editor.document.getText(editor.selection);
-		var refp = new ReferenceParam(uri.toString(),false)
+        var refp = new ReferenceParam(uri.toString(), false)
+        
+        if(lensProviderDisposable != undefined){
+            lensProviderDisposable.dispose();
+        }
 
-		const references = await clangdClient.sendRequest(ReferencesRequest.type,refp)
-		
-		let lineFile = linesFilePath
-        let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd),{canPickMany:false});
+        const references = await clangdClient.sendRequest(ReferencesRequest.type, refp)
+        
+        let lineFile = linesFilePath
+        let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd), { canPickMany: false });
 
-        binaryPromise.then((binaryPath : string) => {
-            if (binaryPath == "other"){
+        binaryPromise.then((binaryPath: string) => {
+            if (binaryPath == "other") {
                 let otherBinary = vscode.window.showInputBox();
-                otherBinary.then((binaryPath : string) => {
-                    let gdb = new GDB(gdbpath, cwd + binaryPath, gdbScript);
-                    let metaData = new TraceMetaData(uri.fsPath,binaryPath,varname);
-                    displayPossibleTracepoints(references, metaData, gdb,uri);
-                    gdb.instantiate(lineFile);
+                otherBinary.then((binaryPath: string) => {
+                    gdb = new GDB(gdbpath, cwd + binaryPath, gdbScript);
+                    let metaData = new TraceMetaData(uri.fsPath, binaryPath, varname);
+                    lensProvider =  displayPossibleTracepoints(references, metaData, gdb, uri);
+                    lensProviderDisposable = vscode.languages.registerCodeLensProvider(
+                        [{ scheme: 'file', pattern: filePattern }],
+                        lensProvider
+                    );
                 })
             } else {
-                let gdb = new GDB(gdbpath, cwd + binaryPath, gdbScript);
-                let metaData = new TraceMetaData(uri.fsPath,binaryPath,varname);
-                displayPossibleTracepoints(references, metaData, gdb,uri);
-                gdb.instantiate(lineFile);
-                vscode.commands.executeCommand("refreshTreeView");
+                gdb = new GDB(gdbpath, cwd + binaryPath, gdbScript);
+                let metaData = new TraceMetaData(uri.fsPath, binaryPath, varname);
+                lensProvider = displayPossibleTracepoints(references, metaData, gdb, uri);
+                lensProviderDisposable = vscode.languages.registerCodeLensProvider(
+                    [{ scheme: 'file', pattern: filePattern }],
+                    lensProvider
+                );
             }
         })
     }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('do-trace', async () => {
+        if(gdb != undefined){
+            gdb.trace(linesFilePath);
+            vscode.commands.executeCommand("refreshTreeView");
+        }
+    }));
+
     
+
     let traceTreeViewProvider = new TraceDataProvider(dirname(editor.document.uri.fsPath))
-	vscode.window.registerTreeDataProvider('varTracking', traceTreeViewProvider );
-	context.subscriptions.push(vscode.commands.registerCommand('refreshTreeView', () => traceTreeViewProvider.refresh()));
+    vscode.window.registerTreeDataProvider('varTracking', traceTreeViewProvider);
+    context.subscriptions.push(vscode.commands.registerCommand('refreshTreeView', () => traceTreeViewProvider.refresh()));
 
     const status = new FileStatus();
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
@@ -391,5 +214,6 @@ export function activate(context: vscode.ExtensionContext) {
                 // Clear all cached statuses when clangd crashes.
                 status.clear();
             }
-        })
+        }
+    )
 }
