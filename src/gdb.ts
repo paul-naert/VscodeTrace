@@ -1,5 +1,6 @@
 import * as child from 'child_process';
 import * as fs  from 'fs';
+import {cwd } from './extension'
 
 export class GDB {
 	gdbpath : string
@@ -16,13 +17,13 @@ export class GDB {
 source trace-segfault.py\n\
 start\n\
 trace-segfault " + linesFile + '\nc')
-        console.log(child.execSync("cd /home/pn/tests/c-lttng/gdb;" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
+        console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
     }
 
     public can_insert(linesFile : string){
         fs.writeFileSync(this.launchScript,
             "source trace-segfault.py\n\
 can_insert_file " + linesFile);
-        console.log(child.execSync("cd /home/pn/tests/c-lttng/gdb;" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
+        console.log(child.execSync("cd "+ cwd +";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
     }
 }

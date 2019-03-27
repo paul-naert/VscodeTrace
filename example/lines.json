@@ -1,0 +1,1 @@
+{"source":"/home/pn/tests/clangd/clangd-vscode/example/bench.c","varname":"a","lines":[{"corrected":7,"enabled":true,"original":7},{"corrected":8,"enabled":false,"original":8},{"corrected":9,"enabled":true,"original":9},{"corrected":11,"enabled":true,"original":10,"modified":true}],"binary":"bench"}

@@ -1,0 +1,18 @@
+{
+    "source": "bench.c",
+    "lines": [
+        {
+            "corrected": "11",
+            "original": "10"
+        },
+        {
+            "corrected": "11",
+            "original": "11"
+        },
+        {
+            "corrected": "13",
+            "original": "12"
+        }
+    ],
+    "binary": "bench"
+}

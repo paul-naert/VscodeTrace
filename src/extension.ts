@@ -12,7 +12,7 @@ import { TraceCodeLensProvider } from './codelens';
 export const filePattern: string = '**/*.{' +
     ['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';
 
-export const cwd = "/home/pn/tests/c-lttng/gdb/";
+export const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath+'/';
 export const linesFileName = "lines.json";
 export const linesFilePath = cwd + linesFileName;
 export const gdbScript = cwd + "launch-python.gdb"
@@ -137,7 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
     var editor = vscode.window.activeTextEditor!;
 
     context.subscriptions.push(clangdClient.start());
-
+    
     cleanFolder(cwd);
 
     context.subscriptions.push(vscode.commands.registerCommand('codelens', async (tracepoint : TPID) => {
