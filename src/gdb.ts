@@ -1,7 +1,8 @@
 import * as child from 'child_process';
 import * as fs  from 'fs';
 import {cwd } from './extension'
-
+const logger = "minitracer.py"
+const tracer = "trace-segfault.py"
 export class GDB {
 	gdbpath : string
 	launchScript : string
@@ -13,8 +14,8 @@ export class GDB {
 		this.binary = bin;
 	}
 	public trace(linesFile : string){
-        fs.writeFileSync(this.launchScript,"source gdblogger.py \n\
-source trace-segfault.py\n\
+        fs.writeFileSync(this.launchScript,"source "+logger+" \n\
+source "+tracer+"\n\
 start\n\
 trace-segfault " + linesFile + '\nc')
         console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());

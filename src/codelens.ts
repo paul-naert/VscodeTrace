@@ -1,22 +1,25 @@
 import * as vscode from "vscode";
-import {TPID, disableTP} from "./trace-manipulation"
+import {TPID, TraceMetaData, switchDisableTP} from "./traceManipulation"
 
 interface Traced{
     before : number;
     after : number;
 }
-function equals(tp1 : TPID, tp2 : TPID){
-    return tp1.occurence===tp2.occurence && tp1.before === tp2.before
-}
-function find_equal(tp : TPID){
-    return (x: TPID)=> {return equals(x,tp)}
-}
+// function equals(tp1 : TPID, tp2 : TPID){
+//     return tp1.occurence===tp2.occurence && tp1.before === tp2.before
+// }
+// function find_equal(tp : TPID){
+//     return (x: TPID)=> {return equals(x,tp)}
+// }
 export class TraceCodeLensProvider implements vscode.CodeLensProvider{
     uri : vscode.Uri 
     tracedEvents = new Map<number,Traced>();
-    disabled : TPID[] = []
+    // disabled : TPID[] = [];
+    disabledLines : number[] = [];
+    varname : string
 
-    constructor(lines : Map<number,TPID[]>, uri : vscode.Uri){
+    constructor(varname : string, lines : Map<number,TPID[]>, uri : vscode.Uri){
+        this.varname = varname;
         this.uri = uri;
         for (let line of lines){
             for (let tpid of line[1]){
@@ -39,16 +42,35 @@ export class TraceCodeLensProvider implements vscode.CodeLensProvider{
         }
     }
     
-    public disable(tracepoint : TPID){
-        if(this.disabled.findIndex(find_equal(tracepoint)) != -1){
-            this.disabled.splice(this.disabled.findIndex(find_equal(tracepoint)),1);
+    // public disable(tracepoint : TPID, metaData :TraceMetaData){
+    //     if(this.disabled.findIndex(find_equal(tracepoint)) != -1){
+    //         this.disabled.splice(this.disabled.findIndex(find_equal(tracepoint)),1);
+    //     }else{
+    //         this.disabled.push(tracepoint);
+    //     }
+    //     if(tracepoint.before){
+    //         switchDisableTP(this.varname,this.tracedEvents.get(tracepoint.occurence).before, metaData);
+    //     }
+    //     else{
+    //         switchDisableTP(this.varname,this.tracedEvents.get(tracepoint.occurence).after, metaData);
+    //     }
+    // }
+
+    public disableLine(line : number, metaData :TraceMetaData){
+        if(this.disabledLines.indexOf(line) != -1){
+            this.disabledLines.splice(this.disabledLines.indexOf(line),1);
         }else{
-            this.disabled.push(tracepoint);
-            if(tracepoint.before){
-                disableTP(this.tracedEvents.get(tracepoint.occurence).before);
-            }
-            else{
-                disableTP(this.tracedEvents.get(tracepoint.occurence).after);
+            this.disabledLines.push(line);
+        }
+        switchDisableTP(this.varname, line, metaData);
+
+    }
+
+    public setDisabled(metaData : TraceMetaData){
+        this.disabledLines = [];
+        for(let line of metaData.varnames.get(this.varname)){
+            if(line.enabled == false){
+                this.disabledLines.push(line.corrected -1);
             }
         }
     }
@@ -59,15 +81,23 @@ export class TraceCodeLensProvider implements vscode.CodeLensProvider{
             return lenses;
         }
         for (let event of this.tracedEvents){
-            let tpidBefore = {occurence : event[0], before: true}
-            if(this.disabled.findIndex(find_equal(tpidBefore)) != -1){
+            lenses.push(
+                new vscode.CodeLens(
+                    new vscode.Range(
+                        new vscode.Position(event[0],1),
+                        new vscode.Position(event[0],2)
+                    ),
+                    ({ title: "label : "+ this.varname, command: "void"} as vscode.Command)
+                )
+            );
+            if(this.disabledLines.indexOf(event[1].before) != -1){
                 lenses.push(
                     new vscode.CodeLens(
                         new vscode.Range(
                             new vscode.Position(event[0],1),
                             new vscode.Position(event[0],2)
                         ),
-                        ({ title: "before : "+ (event[1].before+1) + "(disabled)", command: "codelens", arguments: [tpidBefore] } as vscode.Command)
+                        ({ title: "before : "+ (event[1].before+1) + "(disabled)", command: "disableTP", arguments: [this.varname,event[1].before] } as vscode.Command)
                     )
                 );
             } else {
@@ -77,19 +107,18 @@ export class TraceCodeLensProvider implements vscode.CodeLensProvider{
                             new vscode.Position(event[0],1),
                             new vscode.Position(event[0],2)
                         ),
-                        ({ title: "before : "+ (event[1].before+1), command: "codelens", arguments: [tpidBefore] } as vscode.Command)
+                        ({ title: "before : "+ (event[1].before+1), command: "disableTP", arguments: [this.varname,event[1].before] } as vscode.Command)
                     )
                 );
             }
-            let tpidAfter = {occurence : event[0], before: false}
-            if(this.disabled.findIndex(find_equal(tpidAfter)) != -1){
+            if(this.disabledLines.indexOf(event[1].after) != -1){
                 lenses.push(
                     new vscode.CodeLens(
                         new vscode.Range(
                             new vscode.Position(event[0],1),
                             new vscode.Position(event[0],2)
                         ),
-                        ({ title: "after : "+ (event[1].after+1)+"(disabled)", command: "codelens", arguments: [tpidAfter] } as vscode.Command)
+                        ({ title: "after : "+ (event[1].after+1)+"(disabled)", command: "disableTP", arguments: [this.varname,event[1].after] } as vscode.Command)
                     )
                 );
             } else {
@@ -99,7 +128,7 @@ export class TraceCodeLensProvider implements vscode.CodeLensProvider{
                             new vscode.Position(event[0],1),
                             new vscode.Position(event[0],2)
                         ),
-                        ({ title: "after : "+ (event[1].after+1), command: "codelens", arguments: [tpidAfter] } as vscode.Command)
+                        ({ title: "after : "+ (event[1].after+1), command: "disableTP", arguments: [this.varname,event[1].after] } as vscode.Command)
                     )
                 );
             }

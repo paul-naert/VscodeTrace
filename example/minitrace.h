@@ -136,6 +136,7 @@ extern "C" {
 
 // Counters (can't do multi-value counters yet)
 #define MTR_COUNTER(c, n, val) internal_mtr_raw_event_arg(c, n, 'C', 0, MTR_ARG_TYPE_INT, n, (void *)(intptr_t)(val))
+#define MTR_COUNTER_ID(c, n, val, id) internal_mtr_raw_event_arg(c, n, 'C', (void*) id, MTR_ARG_TYPE_INT, n, (void *)(intptr_t)(val))
 
 // Metadata. Call at the start preferably. Must be const strings.
 
@@ -174,6 +175,7 @@ extern "C" {
 
 // Counters (can't do multi-value counters yet)
 #define MTR_COUNTER(c, n, val)
+#define MTR_COUNTER_ID(c, n, val, id)
 
 // Metadata. Call at the start preferably. Must be const strings.
 

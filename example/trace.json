@@ -1,18 +1,8 @@
 {"traceEvents":[
-{"cat":"","pid":12470,"tid":0,"ts":8,"ph":"M","name":"process_name","args":{"name":"minitrace_test"}},
-{"cat":"","pid":12470,"tid":0,"ts":14,"ph":"M","name":"thread_name","args":{"name":"main thread"}},
-{"cat":"background","pid":12470,"tid":0,"ts":69,"ph":"S","name":"long_running","args":{},"id":"0xffc2d59c"},
-{"cat":"background","pid":12470,"tid":0,"ts":69,"ph":"S","name":"long_running","args":{},"id":"0xffc2d598"},
-{"cat":"main","pid":12470,"tid":0,"ts":70,"ph":"B","name":"outer","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":80173,"ph":"B","name":"inner","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":120275,"ph":"E","name":"inner","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":130377,"ph":"B","name":"inner","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":170479,"ph":"E","name":"inner","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":180581,"ph":"B","name":"inner","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":220683,"ph":"E","name":"inner","args":{}},
-{"cat":"background","pid":12470,"tid":0,"ts":230753,"ph":"T","name":"long_running","args":{"step":"middle step"},"id":"0xffc2d59c"},
-{"cat":"main","pid":12470,"tid":0,"ts":310855,"ph":"E","name":"outer","args":{}},
-{"cat":"main","pid":12470,"tid":0,"ts":360960,"ph":"I","name":"the end","args":{}},
-{"cat":"background","pid":12470,"tid":0,"ts":361025,"ph":"F","name":"long_running","args":{},"id":"0xffc2d59c"},
-{"cat":"background","pid":12470,"tid":0,"ts":361025,"ph":"F","name":"long_running","args":{},"id":"0xffc2d598"}
+{"cat":"","pid":26637,"tid":0,"ts":5,"ph":"M","name":"process_name","args":{"name":"minitrace_test"}},
+{"cat":"","pid":26637,"tid":0,"ts":8,"ph":"M","name":"thread_name","args":{"name":"main thread"}},
+{"cat":"varTracking","pid":26637,"tid":0,"ts":8,"ph":"C","name":"1","args":{"1":1}},
+{"cat":"varTracking","pid":26637,"tid":0,"ts":10,"ph":"C","name":"1","args":{"1":1}},
+{"cat":"varTracking","pid":26637,"tid":0,"ts":33,"ph":"C","name":"2","args":{"2":2,"line" : 33}},
+{"cat":"varTracking","pid":26637,"tid":0,"ts":36,"ph":"C","name":"2","args":{"2":2,"line" : 38}}
 ]}

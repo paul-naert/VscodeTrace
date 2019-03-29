@@ -27,7 +27,7 @@ int main(){
     srand(time(NULL));
     printf("start time %f \n",time_in_mill);
     for (i=0; i< 1000;i++){
-        a[i]=rand();
+        a[i]=1;
         a[i]++;
         count= count+2;
     }
