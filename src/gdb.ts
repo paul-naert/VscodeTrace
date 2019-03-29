@@ -1,8 +1,8 @@
 import * as child from 'child_process';
 import * as fs  from 'fs';
 import {cwd } from './extension'
-const logger = "minitracer.py"
-const tracer = "trace-segfault.py"
+const logger = "tracer.py"
+const tracer = "traceManager.py"
 export class GDB {
 	gdbpath : string
 	launchScript : string
