@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
 import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, Disposable } from 'vscode-languageclient';
-import { TraceDataProvider } from "./treeDataProvider"
+import { TraceDataProvider } from "./treeDataProvider";
 import { dirname, basename } from 'path';
-import { GDB } from './gdb'
-import { cleanFolder, findExecutables } from './FSutils'
-import { TraceMetaData, displayPossibleTracepoints, tpMap } from './traceManipulation'
+import { GDB } from './gdb';
+import { cleanFolder, findExecutables } from './FSutils';
+import { TraceMetaData, displayPossibleTracepoints, tpMap } from './traceManipulation';
 import { TraceCodeLensProvider } from './codelens';
 
 export const filePattern: string = '**/*.{' +
@@ -15,13 +16,13 @@ export const filePattern: string = '**/*.{' +
 export const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath+'/';
 export const linesFileName = "lines.json";
 export const linesFilePath = cwd + linesFileName;
-export const gdbScript = cwd + "launch-python.gdb"
-var lensProviderDisposable : Disposable
-var lensProviders = new  Map<string,TraceCodeLensProvider>();
+export const gdbScript = cwd + "launch-python.gdb";
 var gdb : GDB
 var metaData : TraceMetaData
-var binary : string = ""
-const gdbpath = "/home/pn/git/binutils-gdb/gdb/gdb"
+var lensProviderDisposable : Disposable
+var lensProviders = new  Map<string,TraceCodeLensProvider>();
+var binary = "";
+const gdbpath = "/home/pn/git/binutils-gdb/gdb/gdb";
 
 /**
  * Method to get workspace configuration option
@@ -235,7 +236,7 @@ export function activate(context: vscode.ExtensionContext) {
             if(varname[0]=='"'){
                 varname = "__fun__"+varname.slice(1,varname.length-1);
             }
-            let hash = require('crypto').createHash('sha1').update(JSON.stringify(location)+varname).digest('base64');
+            let hash = crypto.createHash('sha1').update(JSON.stringify(location)+varname).digest('base64');
             if (binary == ""){
                 let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd), { canPickMany: false });
                 binaryPromise.then((binaryPath: string) => {
@@ -267,7 +268,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const references = await clangdClient.sendRequest(ReferencesRequest.type, refp)
         let jsonRefs = JSON.stringify(references);
-        let hash = require('crypto').createHash('sha1').update(jsonRefs).digest('base64');
+        let hash = crypto.createHash('sha1').update(jsonRefs).digest('base64');
         var varname = getVarname(hash);
         if (binary == ""){
             let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd), { canPickMany: false, placeHolder : "binary name"});

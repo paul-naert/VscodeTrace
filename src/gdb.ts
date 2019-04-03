@@ -18,15 +18,13 @@ export class GDB {
 source "+tracer+"\n\
 start\n\
 traceFile " + linesFile + '\nc')
-		console.log(Date.now())
 		console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
-		console.log(Date.now())
     }
 
     public can_insert(linesFile : string){
         fs.writeFileSync(this.launchScript,
             "source "+tracer+"\n\
 can_insert_file " + linesFile);
-        console.log(child.execSync("cd "+ cwd +";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
+		console.log(child.execSync("cd "+ cwd +";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
     }
 }

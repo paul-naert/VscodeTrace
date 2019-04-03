@@ -56,7 +56,6 @@ class TraceManager(gdb.Command):
         #call tracer for each traced line
         with open(linesFile) as fLines:
 
-
             data = json.load(fLines)
             sourceFile = data["source"]
             linemax = 0
@@ -65,7 +64,14 @@ class TraceManager(gdb.Command):
                 for varname in varnames:
                     lines = varname["lines"]
                     idField = varname["varname"]
-                    if(idField[0:7]=="__fun__"):
+                    if (idField == "__flush__"):
+                        fflush, flush_path = mkstemp()
+                        with fdopen(fflush,"w") as tmp:
+                            tmp.write(
+                                "#include \"" + self.config["header"] +"\" \n" + self.config["flush"] 
+                            )
+                        gdb.execute("fcompile file main "+ flush_path)
+                    elif(idField[0:7]=="__fun__"):
                         begin = lines[0]["corrected"]
                         end = lines[1]["corrected"]
                         funname = idField.split('__')[2]
@@ -74,8 +80,6 @@ class TraceManager(gdb.Command):
                     else:
                         for line in lines:
                             if (line["enabled"]):
-                                # logFile = "log_"+ path.basename(sourceFile) +"_line_"+ str(line["corrected"])
-                                print(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                                 gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                 
                 #add tp_finish here
