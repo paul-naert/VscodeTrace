@@ -1,10 +1,9 @@
 {
-    "name": "vscode-clangd",
-    "displayName": "vscode-clangd",
-    "description": "Clang Language Server",
-    "version": "0.0.11",
-    "publisher": "llvm-vs-code-extensions",
-    "homepage": "https://clang.llvm.org/extra/clangd.html",
+    "name": "vscodetrace",
+    "displayName": "GDB auto tracer",
+    "description": "dynamic tracepoint insertion using GDB",
+    "version": "0.1.0",
+    "publisher": "pn",
     "engines": {
         "vscode": "^1.30.0"
     },
@@ -45,8 +44,8 @@
         "vscode": "^1.1.0"
     },
     "repository": {
-        "type": "svn",
-        "url": "http://llvm.org/svn/llvm-project/clang-tools-extra/trunk/clangd/clients/clangd-vscode/"
+        "type": "git",
+        "url": "https://github.com/paul-naert/VscodeTrace"
     },
     "contributes": {
         "viewsContainers": {
@@ -54,7 +53,7 @@
                 {
                     "id": "package-explorer",
                     "title": "Trace explorer",
-                    "icon": "dep.svg"
+                    "icon": "icons/dep.svg"
                 }
             ]
         },
@@ -97,28 +96,27 @@
         "commands": [
             {
                 "command": "man-tracepoint",
-                "title": "Add manual tracepoint",
-                "icon": "magGlass.svg"
+                "title": "Add manual tracepoint"
             },
             {
                 "command": "add-tracepoints",
                 "title": "Add auto tracepoints",
-                "icon": "magGlass.svg"
+                "icon": "icons/magGlass.svg"
             },
             {
                 "command": "do-trace",
                 "title": "Start Tracing",
-                "icon": "play.svg"
+                "icon": "icons/play.svg"
             },
             {
                 "command": "refreshTreeView",
                 "title": "Refresh",
-                "icon": "refresh.svg"
+                "icon": "icons/refresh.svg"
             },
             {
                 "command": "clear",
                 "title": "Clear traced variables",
-                "icon": "clear.svg"
+                "icon": "icons/clear.svg"
             }
         ],
         "keybindings": [

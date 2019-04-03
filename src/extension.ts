@@ -276,9 +276,9 @@ export function activate(context: vscode.ExtensionContext) {
             binaryPromise.then((binaryPath: string) => {
                 // let binaryPath = binaryUri[0].fsPath;
                 if (binaryPath == "other") {
-                    let otherBinary = vscode.window.showInputBox();
-                    otherBinary.then((binaryPath: string) => {
-                        binary = binaryPath;
+                    let otherBinary = vscode.window.showOpenDialog({canSelectFolders : false, canSelectMany : false, openLabel : "Select binary"});
+                    otherBinary.then((binaryUri: vscode.Uri[]) => {
+                        binary = binaryUri[0].fsPath;
                     })
                 } else {
                     binary = binaryPath;

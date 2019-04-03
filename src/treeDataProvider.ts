@@ -30,7 +30,7 @@ export class TracedLine extends vscode.TreeItem {
         return "";
 	}
 
-	iconPath = "dep.svg";
+	iconPath = "icons/dep.svg";
 
 
 }
@@ -59,7 +59,7 @@ export class TracedVar extends vscode.TreeItem {
         return "";
 	}
 
-	iconPath = "dep.svg";
+	iconPath = "icons/dep.svg";
 }
 
 

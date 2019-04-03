@@ -1,6 +1,6 @@
 {
     "name": "minitrace",
-    "header": "/home/pn/tests/clangd/VscodeTrace/example/minitrace.h",
+    "header": "/home/pn/tests/VscodeTrace/example/minitrace.h",
     "library": "./minitrace.so",
     "global_init": "const signed char traceFile[] = \"trace.json\"; \n mtr_init(traceFile); \n MTR_META_PROCESS_NAME(\"minitrace_test\"); MTR_META_THREAD_NAME(\"main thread\");",
     "global_finish": "mtr_flush(); \n mtr_shutdown();",

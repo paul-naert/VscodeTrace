@@ -18,7 +18,9 @@ export class GDB {
 source "+tracer+"\n\
 start\n\
 traceFile " + linesFile + '\nc')
-        console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
+		console.log(Date.now())
+		console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
+		console.log(Date.now())
     }
 
     public can_insert(linesFile : string){
