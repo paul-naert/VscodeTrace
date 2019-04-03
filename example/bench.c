@@ -16,7 +16,7 @@ int aux(){
 int start();
 
 int main(){    
-    int a[1000000];
+    int a[100000];
     int i;
     struct timeval  tv;
     int count = 0;
@@ -26,12 +26,12 @@ int main(){
          (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ; // convert tv_sec & tv_usec to millisecond
     srand(time(NULL));
     printf("start time %f \n",time_in_mill);
-    for (i=0; i< 1000;i++){
+    for (i=0; i< 100000;i++){
         a[i]=1;
         a[i]++;
         count= count+2;
     }
-    for (i= 0; i<1000;i++){
+    for (i= 0; i<100000;i++){
         //printf("a[%d] : %d \n",i, a[i]);
         a[i]++;
     }

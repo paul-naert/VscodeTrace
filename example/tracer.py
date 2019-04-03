@@ -50,16 +50,6 @@ class TraceCommand(gdb.Command):
                 " + command
             )
 
-        # tmp.write(
-        # "#include \"/home/pn/tests/clangd/clangd-vscode/example/minitrace.h\" \n \
-        # static int __once__ = 0; \n \
-        # if (__once__==0) { \n \
-        #     MTR_START(\"varTracking\", "+idField+", 0); \n \
-        #     __once__ = 1; \n \
-        # } \n \
-        # char itostr[15]; \n \
-        # MTR_STEP(\"varTracking\"," +idField+", 0, "+varname+");")
-
         tmp.close()
 
         gdb.execute("fcompile file " + location + " " + tmp.name)
