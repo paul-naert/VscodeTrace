@@ -1,14 +1,13 @@
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient';
 import * as fs from 'fs';
-import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, DiagnosticSeverity, Disposable, Trace } from 'vscode-languageclient';
+import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, Disposable } from 'vscode-languageclient';
 import { TraceDataProvider } from "./treeDataProvider"
 import { dirname, basename } from 'path';
 import { GDB } from './gdb'
 import { cleanFolder, findExecutables } from './FSutils'
-import { TraceMetaData, displayPossibleTracepoints, TPID, tpMap } from './traceManipulation'
+import { TraceMetaData, displayPossibleTracepoints, tpMap } from './traceManipulation'
 import { TraceCodeLensProvider } from './codelens';
-import { strictEqual } from 'assert';
 
 export const filePattern: string = '**/*.{' +
     ['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import {toFile, getLinesFile} from './extension'
-import { Tracepoint, TraceMetaData } from './traceManipulation';
+import { getLinesFile} from './extension'
+import { TraceMetaData } from './traceManipulation';
 
 export class TracedLine extends vscode.TreeItem {
 

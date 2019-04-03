@@ -3,9 +3,8 @@ import * as vscodelc from 'vscode-languageclient';
 import * as fs  from 'fs';
 import { GDB } from './gdb'
 import { TraceCodeLensProvider } from './codelens';
-import {filePattern, cwd, linesFilePath } from './extension'
-import { Disposable } from 'vscode-languageclient';
-import { equal } from 'assert';
+import {linesFilePath } from './extension'
+
 
 export interface TPID{
     occurence : number
