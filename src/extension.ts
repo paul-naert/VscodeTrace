@@ -202,7 +202,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     function getVarname(hash : string) : string{
         let tmpVarname = editor.document.getText(editor.selection);
-        if(metaData==null || metaData.varnames.get(tmpVarname)==[]){
+        if(metaData==null || metaData.varnames.get(tmpVarname).length == 0){
             return tmpVarname;
         }
         let varname = metaData.varnames.getName(hash);
@@ -232,6 +232,9 @@ export function activate(context: vscode.ExtensionContext) {
             let location : vscodelc.Location = {
                 uri : uri.toString(), 
                 range : editor.selection
+            }
+            if(varname[0]=='"'){
+                varname = "__fun__"+varname.slice(1,varname.length-1);
             }
             let hash = require('crypto').createHash('sha1').update(JSON.stringify(location)+varname).digest('base64');
             if (binary == ""){

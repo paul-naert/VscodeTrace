@@ -11,7 +11,8 @@ class TraceCommand(gdb.Command):
     def __init__(self):
         new_compile_args = default_compile_args + " -Wno-unused-local-typedefs"
         gdb.execute("set compile-args "+ new_compile_args)
-        self.config = json.load(tracerConfig)        
+        traceFile = open(tracerConfig)
+        self.config = json.load(traceFile)        
         super(TraceCommand, self).__init__(self.config["name"], gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
@@ -19,26 +20,28 @@ class TraceCommand(gdb.Command):
         arg_split = arg.split(' ')
         tmpfile = tempfile.NamedTemporaryFile(suffix=".c")
         tmp = open(tmpfile.name,"w+")
-        if (len(arg_split)<2):
+        if (len(arg_split)<3):
             print("Missing arguments for log command")
             return
 
-        location, varname = arg_split[0],arg_split[1]
+        tpType, location, varname = arg_split[0],arg_split[1],arg_split[2]
         # line = location.split(':')[-1]
+        tpArgs = varname.split('__')
+        if tpType == "count":
+            varType = "int"
+            if (varname.count('__')==1):
+                tpType += "_secondary"
+                # tpArgs.append(location.split(':')[-1])
+            else :
+                tpType += "_primary"
 
+        if tpType == "duration_begin":
+            varType = "none"
+        if tpType == "duration_end":
+            varType = "none"
         command = ""
-        tpArgs = []
-        if (varname.count('__')==1):
-            varType = "int"
-            tpType = "secondary"
-            tpArgs = varname.split('__')
-                    
-        else :
-            varType = "int"
-            tpType = "primary"
-            tpArgs = varname.split('__')
         for tracepoint in self.config["tracepoints"]:
-            if(tracepoint["type"] == varType and tracepoint["when"] == tpType):
+            if(tracepoint["varType"] == varType and tracepoint["tpType"] == tpType):
                 command = tracepoint["tp_trace"]["command"]
                 for index, arg in enumerate(tracepoint["tp_trace"]["args"]):
                     command = command.replace(arg,tpArgs[index])

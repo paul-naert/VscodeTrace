@@ -14,13 +14,25 @@ def correct(line):
         last = last[:-1]
     return last 
 
+def getEndLine():
+    
+    linetable = gdb.selected_frame().find_sal().symtab.linetable()
+    block = gdb.selected_frame().block()
+    endline = gdb.selected_frame().find_sal().line
+    #Does not work if we add lines! 
+    for endline in linetable.source_lines():
+        if linetable.line(endline)[0].pc >= block.end:
+            break
+    return endline
+    
 
 class TraceManager(gdb.Command):
     config = {}
     logCmd = ""
     def __init__(self):
         super(TraceManager, self).__init__("traceFile", gdb.COMMAND_DATA)
-        self.config = json.load(tracerConfig)
+        traceFile = open(tracerConfig)
+        self.config = json.load(traceFile)        
         gdb.execute("set environment LD_PRELOAD "+ self.config["library"])
         self.logCmd = self.config["name"]
         
@@ -30,37 +42,50 @@ class TraceManager(gdb.Command):
             print("Argument missing for traceFile command")
             return
         linesFile = args
-        fh, abs_path = mkstemp()
-        
-        #initialize tracer
-        with fdopen(fh,"w") as tmp:
-            tmp.write(
-                "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
-            )
-        gdb.execute("fcompile file main "+ abs_path)
+        finit, init_path = mkstemp()
+        ffinal, final_path = mkstemp()
 
+
+        with fdopen(ffinal,"w") as final:
+            #finish tracer (before tracing so that it gets pushed back if other tracepoints are added)
+            final.write("#include \""+ self.config["header"] +"\" \n ")
+            final.write(self.config["global_finish"])
+            linemax=getEndLine()
+
+        gdb.execute("fcompile file "+ str(linemax) +" "+ final_path) 
         #call tracer for each traced line
         with open(linesFile) as fLines:
-            with fdopen(fh,"w") as final:
-                final.write("#include \""+ self.config["header"] +"\" \n ")
-                data = json.load(fLines)
-                sourceFile = data["source"]
+
+
+            data = json.load(fLines)
+            sourceFile = data["source"]
+            linemax = 0
+            if "varnames" in data:
                 varnames = data["varnames"]["data"]
-                linemax = 0
                 for varname in varnames:
                     lines = varname["lines"]
-                    for line in lines:
-                        if (line["enabled"]):
-                            idField = varname["varname"]
-                            # logFile = "log_"+ path.basename(sourceFile) +"_line_"+ str(line["corrected"])
-                            print(self.logCmd + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
-                            gdb.execute(self.logCmd + sourceFile + ':' + str(line["corrected"]) + ' ' + idField) 
-                            linemax = 39 #max([linemax,line["corrected"]])
+                    idField = varname["varname"]
+                    if(idField[0:7]=="__fun__"):
+                        begin = lines[0]["corrected"]
+                        end = lines[1]["corrected"]
+                        funname = idField.split('__')[2]
+                        gdb.execute(self.logCmd + " duration_begin "+ sourceFile + ':' + str(begin) + ' ' + funname)
+                        gdb.execute(self.logCmd + " duration_end "+ sourceFile + ':' + str(end) + ' ' + funname)
+                    else:
+                        for line in lines:
+                            if (line["enabled"]):
+                                # logFile = "log_"+ path.basename(sourceFile) +"_line_"+ str(line["corrected"])
+                                print(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
+                                gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
+                
                 #add tp_finish here
-                final.write(self.config["global_finish"])
-            #can trace linemax +1?
-            linemax+=1
-            gdb.execute("fcompile file "+ str(linemax) +" "+ abs_path) 
+
+            #initialize tracer (after tracing so that it pushes back other tracepoints at the same location)
+            with fdopen(finit,"w") as tmp:
+                tmp.write(
+                    "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
+                )
+            gdb.execute("fcompile file main "+ init_path)
             
         
 

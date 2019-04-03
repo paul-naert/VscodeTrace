@@ -1,0 +1,65 @@
+{
+    "name": "minitrace",
+    "header": "/home/pn/tests/clangd/clangd-vscode/example/minitrace.h",
+    "library": "./minitrace.so",
+    "global_init": "const signed char traceFile[] = \"trace.json\"; \n mtr_init(traceFile); \n MTR_META_PROCESS_NAME(\"minitrace_test\"); MTR_META_THREAD_NAME(\"main thread\");",
+    "global_finish": "mtr_flush(); \n mtr_shutdown();",
+    "tracepoints": [
+        {
+            "varType": "int",
+            "tpType": "count_primary",
+            "tp_init": "",
+            "tp_trace": {
+                "args": [
+                    "_nameField"
+                ],
+                "command": "MTR_COUNTER(\"varTracking\",\"_nameField\",_nameField);\n"
+            },
+            "tp_finish": ""
+        },
+        {
+            "varType": "int",
+            "tpType": "count_secondary",
+            "tp_init": "",
+            "tp_trace": 
+                {
+                    "args": [
+                        "_nameField",
+                        "_idField"
+                    ],
+                    "command": "MTR_COUNTER_ID(\"varTracking\",\"_nameField\",_nameField,_idField);\n"
+                }
+            ,
+            "tp_finish": ""
+        },
+        {
+            
+            "varType": "none",
+            "tpType": "duration_begin",
+            "tp_init": "",
+            "tp_trace": 
+                {
+                    "args": [
+                        "_nameField"
+                    ],
+                    "command": "MTR_BEGIN(\"functionDuration\", \"_nameField\");\n"
+                }
+            ,
+            "tp_finish": ""
+        },
+        {
+            "varType": "none",
+            "tpType": "duration_end",
+            "tp_init": "",
+            "tp_trace": 
+                {
+                    "args": [
+                        "_nameField"
+                    ],
+                    "command": "MTR_END(\"functionDuration\", \"_nameField\");\n"
+                }
+            ,
+            "tp_finish": ""
+        }
+    ]
+}

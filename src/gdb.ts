@@ -17,13 +17,13 @@ export class GDB {
         fs.writeFileSync(this.launchScript,"source "+logger+" \n\
 source "+tracer+"\n\
 start\n\
-trace-segfault " + linesFile + '\nc')
+traceFile " + linesFile + '\nc')
         console.log(child.execSync("cd "+ cwd+ ";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
     }
 
     public can_insert(linesFile : string){
         fs.writeFileSync(this.launchScript,
-            "source trace-segfault.py\n\
+            "source "+tracer+"\n\
 can_insert_file " + linesFile);
         console.log(child.execSync("cd "+ cwd +";" + this.gdbpath + " " + this.binary + " -x " + this.launchScript).toString());
     }
