@@ -78,8 +78,10 @@ class TraceManager(gdb.Command):
                         gdb.execute(self.logCmd + " duration_begin "+ sourceFile + ':' + str(begin) + ' ' + funname)
                         gdb.execute(self.logCmd + " duration_end "+ sourceFile + ':' + str(end) + ' ' + funname)
                     else:
+                        tracedLines = []
                         for line in lines:
-                            if (line["enabled"]):
+                            if (line["enabled"] and line["corrected"] not in tracedLines):
+                                tracedLines.append(line["corrected"])
                                 gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                 
                 #add tp_finish here

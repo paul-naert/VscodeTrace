@@ -1,7 +1,7 @@
 {
     "name": "minitrace",
     "header": "/home/pn/tests/VscodeTrace/example/minitrace.h",
-    "library": "./minitrace.so",
+    "library": "/home/pn/tests/VscodeTrace/example/minitrace.so",
     "global_init": "const char traceFile[] = \"trace.json\"; \n mtr_init(traceFile); \n MTR_META_PROCESS_NAME(\"minitrace_test\"); MTR_META_THREAD_NAME(\"main thread\");",
     "global_finish": "mtr_shutdown();",
     "flush": "mtr_flush();",
@@ -28,6 +28,31 @@
                     "_idField"
                 ],
                 "command": "MTR_COUNTER_ID(\"varTracking\",\"_nameField\",_nameField,_idField);\n"
+            },
+            "tp_finish": ""
+        },
+        {
+            "varType": "pointer",
+            "tpType": "count_primary",
+            "tp_init": "",
+            "tp_trace": {
+                "args": [
+                    "_nameField"
+                ],
+                "command": "MTR_PCOUNTER(\"varTracking\",\"_nameField\",_nameField);\n"
+            },
+            "tp_finish": ""
+        },
+        {
+            "varType": "pointer",
+            "tpType": "count_secondary",
+            "tp_init": "",
+            "tp_trace": {
+                "args": [
+                    "_nameField",
+                    "_idField"
+                ],
+                "command": "MTR_PCOUNTER_ID(\"varTracking\",\"_nameField\",_nameField,_idField);\n"
             },
             "tp_finish": ""
         },
