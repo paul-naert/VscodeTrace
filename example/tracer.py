@@ -35,14 +35,11 @@ def varType(filename, line, varname):
     types = []
     names = []
     if typeStruct.code == gdb.TYPE_CODE_STRUCT:
-        print("hello")
         fields = typeStruct.fields()
-        print("hello")
         for field in fields:
             types.append(field.type.code)
             names.append('.'+field.name)
     else :
-        print("hello")
         types = [typeStruct.code]
         names = [""]
     return names,types
@@ -88,8 +85,6 @@ class TraceCommand(gdb.Command):
                 if command == "":
                     continue
                 tmp = open(tmpfile.name,"w")
-                print("command")
-                print(command)
                 tmp.write(
                         "#include \""+ self.config["header"] +"\" \n \
                         " + command
