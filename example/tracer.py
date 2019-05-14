@@ -3,6 +3,8 @@ import tempfile
 import os.path
 import json
 
+patchCmd = "patch file "
+
 default_compile_args = "-O0 -gdwarf-4 -fPIE -Wall  -Wno-unused-but-set-variable -Wno-unused-variable -fno-stack-protector -w"
 tracerConfig = "minitraceConfig.json"
 
@@ -91,7 +93,7 @@ class TraceCommand(gdb.Command):
                     )
                 tmp.close()
 
-                gdb.execute("fcompile file " + location + " " + tmp.name)
+                gdb.execute(patchCmd + location + " " + tmp.name)
         else:
             if tpType == "duration_begin":
                 varType = "none"
@@ -111,7 +113,7 @@ class TraceCommand(gdb.Command):
 
             tmp.close()
 
-            gdb.execute("fcompile file " + location + " " + tmp.name)
+            gdb.execute(patchCmd + location + " " + tmp.name)
         tmpfile.close()
 
 TraceCommand()

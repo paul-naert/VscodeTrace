@@ -98,6 +98,7 @@ function filterLines (refs : vscodelc.Location[]) : Map<number,TPID[]> {
 	}
 	return tplines;
 }
+
 function insert(tpid : TPID ,lines : Map<number,TPID[]>, new_line :number){
 
     if(lines.has(new_line)){
@@ -169,6 +170,28 @@ export function displayPossibleTracepoints(varname : string, refs : vscodelc.Loc
     let provider = new TraceCodeLensProvider(varname,tpLines,uri);
 	return provider;
 }
+
+export function listTracableLines(refs : vscodelc.Location[], metaData : TraceMetaData, gdb : GDB) : number[] {
+    var tpLines = filterLines(refs);
+    metaData.populate("all_lines","",tpLines);
+    fs.writeFileSync(linesFilePath,JSON.stringify(metaData)); 
+    gdb.can_insert(linesFilePath);
+    let linesFileContent = fs.readFileSync(linesFilePath).toString();
+    metaData = JSON.parse(linesFileContent);
+    metaData.varnames = new tpMap(metaData.varnames.data);
+    let lines = metaData.varnames.get("all_lines");
+
+    var tracableLines : number[] = [];
+    for (let tracepoint of lines){
+        if (tracepoint.corrected != null && !tracableLines.includes(tracepoint.corrected)){
+            tracableLines.push(tracepoint.corrected);
+        }
+    }
+    tracableLines = tracableLines.sort(((a, b) => a - b));
+
+    return tracableLines;
+}
+
 
 export function switchDisableTP(varname : string, tpLoc : number, metaData : TraceMetaData){
 

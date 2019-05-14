@@ -1,14 +1,15 @@
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient';
-import * as fs from 'fs';
+var fs = require('fs');
 import * as crypto from 'crypto';
 import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, Disposable } from 'vscode-languageclient';
 import { TraceDataProvider } from "./treeDataProvider";
 import { dirname, basename } from 'path';
 import { GDB } from './gdb';
 import { cleanFolder, findExecutables } from './FSutils';
-import { TraceMetaData, displayPossibleTracepoints, tpMap } from './traceManipulation';
+import { TraceMetaData, displayPossibleTracepoints, tpMap, listTracableLines } from './traceManipulation';
 import { TraceCodeLensProvider } from './codelens';
+import * as child from 'child_process';
 
 export const filePattern: string = '**/*.{' +
     ['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';
@@ -17,6 +18,7 @@ export const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath+'/';
 export const linesFileName = "lines.json";
 export const linesFilePath = cwd + linesFileName;
 export const gdbScript = cwd + "launch-python.gdb";
+
 var gdb : GDB
 var metaData : TraceMetaData
 var lensProviderDisposable : Disposable
@@ -155,6 +157,18 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand("refreshTreeView");
     }));
 
+    context.subscriptions.push(vscode.commands.registerCommand('import', async () => {
+        let metaPathPromise = vscode.window.showOpenDialog({canSelectMany : false, defaultUri : vscode.Uri.file(cwd)});
+        metaPathPromise.then((metaPaths : vscode.Uri[])=> {
+            vscode.commands.executeCommand("clear");
+            fs.copyFileSync(metaPaths[0].fsPath,linesFilePath);
+            readMetaData(metaData)
+            binary = metaData.binary;
+            gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+            vscode.commands.executeCommand("refreshTreeView");
+        })
+    }));
+
     context.subscriptions.push(vscode.commands.registerCommand('disableTP', async (varname : string, tpLine : number) => {
 
         lensProviders.get(varname).disableLine(tpLine, metaData);
@@ -163,30 +177,34 @@ export function activate(context: vscode.ExtensionContext) {
     }));
 
     context.subscriptions.push(vscode.commands.registerCommand('refreshCodeLens', async (varname : string) => {
-        lensProviderDisposable.dispose();
-        let lensProvider = lensProviders.get(varname);
-        lensProviderDisposable = vscode.languages.registerCodeLensProvider(
-            [{ scheme: 'file', pattern: filePattern }],
-            lensProvider
-        );
+        if(lensProviderDisposable != null){
+            lensProviderDisposable.dispose();
+            let lensProvider = lensProviders.get(varname);
+            lensProviderDisposable = vscode.languages.registerCodeLensProvider(
+                [{ scheme: 'file', pattern: filePattern }],
+                lensProvider
+            );
+        }
     }));
 
-    function resetMetaData(source : string, binary : string){
-        metaData = new TraceMetaData(source,binary)
+    function resetMetaData(source : string, binary : string) : TraceMetaData{
+        var meta = new TraceMetaData(source,binary)
+        return meta;
+
     }
     
-    function readMetaData(){
+    function readMetaData(meta : TraceMetaData){
         let linesFileContent = fs.readFileSync(linesFilePath).toString();
 
         let metaDatatext = JSON.parse(linesFileContent);
-        metaData = new TraceMetaData(metaDatatext.source,metaDatatext.binary);
-        metaData.varnames = new tpMap(metaDatatext.varnames.data);
+        meta = new TraceMetaData(metaDatatext.source,metaDatatext.binary);
+        meta.varnames = new tpMap(metaDatatext.varnames.data);
     }
 
     function doDisplay(varname : string, references : vscodelc.Location[], hash : string, uri : vscode.Uri){
-        gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+        if (gdb == null) gdb = new GDB(gdbpath, cwd + binary, gdbScript);
         if(metaData == null){
-            resetMetaData (uri.fsPath,binary);
+            metaData = resetMetaData ( uri.fsPath,binary);
         }
         let lensProvider =  displayPossibleTracepoints(varname, references, hash, metaData, gdb, uri);
         lensProvider.setDisabled(metaData);
@@ -195,7 +213,7 @@ export function activate(context: vscode.ExtensionContext) {
             [{ scheme: 'file', pattern: filePattern }],
             lensProvider
         );
-        readMetaData();
+        readMetaData(metaData);
         vscode.commands.executeCommand("refreshTreeView");
     }
 
@@ -234,7 +252,8 @@ export function activate(context: vscode.ExtensionContext) {
                 range : editor.selection
             }
             if(varname[0]=='"'){
-                varname = "__fun__"+varname.slice(1,varname.length-1);
+                varname = varname.replace(new RegExp(' ', 'g') ,"_");
+                varname = "__time__"+varname.slice(1,varname.length-1);
             }
             let hash = crypto.createHash('sha1').update(JSON.stringify(location)+varname).digest('base64');
             if (binary == ""){
@@ -289,6 +308,73 @@ export function activate(context: vscode.ExtensionContext) {
         }
         else {
             doDisplay(varname,references,hash,uri);
+        }
+    }));
+
+    function traceAllLines(references : vscodelc.Location[], hash : string, uri : vscode.Uri){
+        if (gdb == null) gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+        var allLinesMetaData = resetMetaData ( uri.fsPath,binary);
+        
+        var all_tps = listTracableLines(references, allLinesMetaData, gdb);
+        console.log(all_tps);
+        allLinesMetaData = resetMetaData (uri.fsPath, binary);
+        for (let i = 0; i< all_tps.length-1; i++){
+            let varname = "__time__line_"+all_tps[i].toString()+"_to_"+all_tps[i+1].toString();
+            let location : vscodelc.Location = {
+                uri : uri.toString(),
+                range : new vscode.Range(
+                    new vscode.Position(all_tps[i]-1,1),
+                    new vscode.Position(all_tps[i+1]-2,2)
+                )
+            }
+            traceVar(allLinesMetaData, varname,[location],"",uri);
+        }
+    }
+
+    async function traceVar(allLinesMetaData : TraceMetaData, varname : string, references : vscodelc.Location[], hash : string, uri : vscode.Uri){
+        
+        displayPossibleTracepoints(varname, references, hash, allLinesMetaData, gdb, uri);
+
+        readMetaData(allLinesMetaData);
+        vscode.commands.executeCommand("do-trace");
+        await sleep(1000)
+        child.execSync("python "+cwd+"correct-trace.py");
+    }
+    function sleep(ms:number){
+        return new Promise(resolve=>{
+            setTimeout(resolve,ms)
+        })
+    }
+    context.subscriptions.push(vscode.commands.registerCommand('trace-all-lines', async () => {
+        /* Add a tracepoint to each program line and display time taken per line */
+        const uri = vscode.Uri.file(editor.document.fileName);
+        var all_lines : vscodelc.Location[] = [];
+        for (let i = 1; i<editor.document.lineCount-2; i++){
+            let location : vscodelc.Location = {
+                uri : uri.toString(), 
+                range : new vscode.Range(
+                            new vscode.Position(i,1),
+                            new vscode.Position(i,2)
+                        )
+            }
+            all_lines.push(location);
+        }
+        if (binary == ""){
+            let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd), { canPickMany: false });
+            binaryPromise.then((binaryPath: string) => {
+                if (binaryPath == "other") {
+                    let otherBinary = vscode.window.showInputBox();
+                    otherBinary.then((binaryPath: string) => {
+                        binary = binaryPath;
+                    })
+                } else {
+                    binary = binaryPath;
+                }
+                traceAllLines(all_lines,"",uri);
+            });
+        }
+        else {
+            traceAllLines(all_lines,"",uri);
         }
     }));
 

@@ -22,24 +22,24 @@ int main(){
     int count = 0;
     gettimeofday(&tv, NULL);
 
-    double time_in_mill = 
-         (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ; // convert tv_sec & tv_usec to millisecond
+    double time_in_micros = 
+         (tv.tv_sec) * 1000*1000 + (tv.tv_usec); // convert tv_sec & tv_usec to millisecond
     srand(time(NULL));
-    printf("start time %f \n",time_in_mill);
-    for (i=0; i< 100000;i++){
+    printf("start time %f \n",time_in_micros);
+    for (i=0; i< 1000;i++){ // loop 1
         a[i]=1;
         a[i]++;
         count= count+2;
     }
-    for (i= 0; i<100000;i++){
-        //printf("a[%d] : %d \n",i, a[i]);
+    for (i= 0; i<1000;i++){
+        //loop 2
         a[i]++;
     }
     aux();
     gettimeofday(&tv, NULL);
-    double time_end = (tv.tv_sec) * 1000 + (tv.tv_usec) / 1000 ;
+    double time_end = (tv.tv_sec) * 1000*1000 + (tv.tv_usec);
     printf("end time %f \n",time_end);
-    printf("length in ms %f \n", time_end - time_in_mill );
+    printf("length in us %f \n", time_end - time_in_micros );
     start();
 
 }

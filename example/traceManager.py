@@ -4,7 +4,8 @@ from shutil import move
 from os import fdopen, remove,path
 import json
 
-canCmd = "can_insert "
+canCmd = "patch where "
+patchCmd = "patch file "
 
 tracerConfig = "minitraceConfig.json"
 
@@ -52,13 +53,15 @@ class TraceManager(gdb.Command):
             final.write(self.config["global_finish"])
             linemax=getEndLine()
 
-        gdb.execute("fcompile file "+ str(linemax) +" "+ final_path) 
+        gdb.execute(patchCmd + str(linemax) +" "+ final_path) 
         #call tracer for each traced line
         with open(linesFile) as fLines:
 
             data = json.load(fLines)
             sourceFile = data["source"]
             linemax = 0
+            begin_commands = []
+            end_commands = []
             if "varnames" in data:
                 varnames = data["varnames"]["data"]
                 for varname in varnames:
@@ -70,13 +73,13 @@ class TraceManager(gdb.Command):
                             tmp.write(
                                 "#include \"" + self.config["header"] +"\" \n" + self.config["flush"] 
                             )
-                        gdb.execute("fcompile file main "+ flush_path)
-                    elif(idField[0:7]=="__fun__"):
+                        gdb.execute(patchCmd + "main "+ flush_path)
+                    elif(idField[0:8]=="__time__" and lines[0]["enabled"] ):
                         begin = lines[0]["corrected"]
                         end = lines[1]["corrected"]
                         funname = idField.split('__')[2]
-                        gdb.execute(self.logCmd + " duration_begin "+ sourceFile + ':' + str(begin) + ' ' + funname)
-                        gdb.execute(self.logCmd + " duration_end "+ sourceFile + ':' + str(end) + ' ' + funname)
+                        begin_commands.append(self.logCmd + " duration_begin "+ sourceFile + ':' + str(begin) + ' ' + funname)
+                        end_commands.append(self.logCmd + " duration_end "+ sourceFile + ':' + str(end) + ' ' + funname)
                     else:
                         tracedLines = []
                         for line in lines:
@@ -85,13 +88,17 @@ class TraceManager(gdb.Command):
                                 gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                 
                 #add tp_finish here
-
+            #we need to have end commands executed before begin commands in order not to have to distinct segment overlap. 
+            for cmd in begin_commands:
+                gdb.execute(cmd)
+            for cmd in end_commands:
+                gdb.execute(cmd)
             #initialize tracer (after tracing so that it pushes back other tracepoints at the same location)
             with fdopen(finit,"w") as tmp:
                 tmp.write(
                     "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
                 )
-            gdb.execute("fcompile file main "+ init_path)
+            gdb.execute(patchCmd + "main "+ init_path)
             
         
 
@@ -125,7 +132,7 @@ class TraceSegfaultCan(gdb.Command):
                     for index, line in enumerate(lines):
                         response = gdb.execute(canCmd + sourceFile + ':' + str(line["original"]),False,True)
                         new_line = correct(response)
-                        if (new_line == "jump"):
+                        if (new_line == "function."): #end of error message when tp cannot be inserted. Should be made clearer
                             topop.append(index)
                             continue
                         if(len(response.split('\n'))>=3 or int(new_line)!=line["original"]):

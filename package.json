@@ -117,13 +117,28 @@
                 "command": "clear",
                 "title": "Clear traced variables",
                 "icon": "icons/clear.svg"
+            },
+            {
+                "command": "import",
+                "title": "Import trace metadata file",
+                "icon": "icons/import.svg"
+            },
+            {
+                "command": "trace-all-lines",
+                "title": "Line diagnosis"
             }
         ],
         "keybindings": [
             {
                 "command": "add-tracepoints",
-                "key": "Alt+o",
-                "mac": "Alt+cmd+o",
+                "key": "Alt+n",
+                "mac": "Alt+cmd+n",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "man-tracepoint",
+                "key": "Alt+m",
+                "mac": "Alt+cmd+m",
                 "when": "editorTextFocus"
             }
         ],
@@ -142,18 +157,30 @@
                 {
                     "command": "add-tracepoints",
                     "when": "view == varTracking",
-                    "group": "navigation@2"
+                    "group": "navigation@3"
                 },
                 {
                     "command": "do-trace",
                     "when": "view == varTracking",
-                    "group": "navigation@3"
+                    "group": "navigation@4"
                 },
                 {
                     "command": "refreshTreeView",
                     "when": "view == varTracking",
-                    "group": "navigation@1"
+                    "group": "navigation@2"
                 },
+                {
+                    "command": "clear",
+                    "when": "view == varTracking",
+                    "group": "navigation@0"
+                },
+                {
+                    "command": "import",
+                    "when": "view == varTracking",
+                    "group": "navigation@1"
+                }
+            ],
+            "view/item/context": [
                 {
                     "command": "clear",
                     "when": "view == varTracking",
