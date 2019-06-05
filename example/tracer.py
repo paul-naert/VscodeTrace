@@ -23,7 +23,10 @@ def varFormat(location, varname):
     return names,formats
 
 def varType(filename, line, varname):
-    symtab = gdb.selected_frame().find_sal().symtab
+    frame = gdb.selected_frame()
+    while (frame and frame.name()!="main"):
+        frame = frame.older()
+    symtab = frame.find_sal().symtab
     if (symtab.filename != os.path.basename(filename)):
         print("warning ! frame selected not correct "+ symtab.filename + " vs " + os.path.basename(filename))
         return [""],[gdb.TYPE_CODE_INT]
@@ -57,7 +60,7 @@ class TraceCommand(gdb.Command):
         super(TraceCommand, self).__init__(self.config["name"], gdb.COMMAND_DATA)
 
     def invoke(self, arg, from_tty):
-
+        log = open("minilog.txt","a")
         arg_split = arg.split(' ')
         tmpfile = tempfile.NamedTemporaryFile(suffix=".c")
         
@@ -92,7 +95,7 @@ class TraceCommand(gdb.Command):
                         " + command
                     )
                 tmp.close()
-
+                log.write(patchCmd + location + " " + tmp.name)
                 gdb.execute(patchCmd + location + " " + tmp.name)
         else:
             if tpType == "duration_begin":
@@ -112,9 +115,8 @@ class TraceCommand(gdb.Command):
                 )
 
             tmp.close()
-
+            log.write(patchCmd + location + " " + tmp.name)
             gdb.execute(patchCmd + location + " " + tmp.name)
         tmpfile.close()
 
 TraceCommand()
-

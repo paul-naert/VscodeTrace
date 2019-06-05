@@ -33,6 +33,7 @@
         "test": "node ./node_modules/vscode/bin/test"
     },
     "dependencies": {
+        "ps-node": "^0.1.6",
         "vscode-languageclient": "^5.2.0",
         "vscode-languageserver": "^5.2.0"
     },
@@ -109,6 +110,14 @@
                 "icon": "icons/play.svg"
             },
             {
+                "command": "attach",
+                "title": "Attach to running process"
+            },
+            {
+                "command": "detach",
+                "title": "Detach from a process"
+            },
+            {
                 "command": "refreshTreeView",
                 "title": "Refresh",
                 "icon": "icons/refresh.svg"
@@ -131,14 +140,22 @@
         "keybindings": [
             {
                 "command": "add-tracepoints",
-                "key": "Alt+n",
-                "mac": "Alt+cmd+n",
+                "key": "Alt+shift+n",
                 "when": "editorTextFocus"
             },
             {
                 "command": "man-tracepoint",
-                "key": "Alt+m",
-                "mac": "Alt+cmd+m",
+                "key": "Alt+shift+m",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "attach",
+                "key": "Alt+shift+a",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "detach",
+                "key": "Alt+shift+d",
                 "when": "editorTextFocus"
             }
         ],

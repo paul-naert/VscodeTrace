@@ -1,5 +1,5 @@
 import * as fs  from 'fs';
-import {linesFileName, cwd, gdbScript} from './extension'
+import {linesFileName, cwd, gdbLaunch, gdbAttach, gdbDetach} from './extension'
 
 export function findExecutables(currentDirectory : string) : string[]{
     let executables : string[] = [];
@@ -20,7 +20,7 @@ export function cleanFolder(currentDirectory : string){
         if(file.slice(0,4)=="log_"){
             fs.unlinkSync(currentDirectory + file);
         }
-        if(file == linesFileName || cwd+file == gdbScript){
+        if(file == linesFileName || cwd+file == gdbLaunch || cwd+file == gdbDetach || cwd+file == gdbAttach){
             fs.unlinkSync(currentDirectory + file);
         }
     }

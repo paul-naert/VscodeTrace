@@ -17,14 +17,20 @@ def correct(line):
 
 def getEndLine():
     
-    linetable = gdb.selected_frame().find_sal().symtab.linetable()
-    block = gdb.selected_frame().block()
-    endline = gdb.selected_frame().find_sal().line
-    #Does not work if we add lines! 
-    for endline in linetable.source_lines():
-        if linetable.line(endline)[0].pc >= block.end:
-            break
-    return endline
+    frame = gdb.selected_frame()
+    while (frame and frame.name()!="main"):
+        frame = frame.older()
+    linetable = frame.find_sal().symtab.linetable()    
+    #main block
+    # block = gdb.selected_frame().block()
+    # endline = gdb.selected_frame().find_sal().line
+    # #Does not work if we add lines! 
+    # for endline in linetable.source_lines():
+    #     i = 0
+    #     # if linetable.line(endline)[0].pc >= block.end:
+    #         # break
+    print(linetable.source_lines())
+    return max(linetable.source_lines())-1
     
 
 class TraceManager(gdb.Command):
@@ -37,6 +43,7 @@ class TraceManager(gdb.Command):
         gdb.execute("set environment LD_PRELOAD "+ self.config["library"])
         self.logCmd = self.config["name"]
         
+
     def invoke(self, args, from_tty):
         #execute trace commands
         if (args == None):
@@ -45,14 +52,14 @@ class TraceManager(gdb.Command):
         linesFile = args
         finit, init_path = mkstemp()
         ffinal, final_path = mkstemp()
-
+        log = open("log.txt","w")
 
         with fdopen(ffinal,"w") as final:
             #finish tracer (before tracing so that it gets pushed back if other tracepoints are added)
             final.write("#include \""+ self.config["header"] +"\" \n ")
             final.write(self.config["global_finish"])
             linemax=getEndLine()
-
+        log.write(patchCmd + str(linemax) +" "+ final_path)
         gdb.execute(patchCmd + str(linemax) +" "+ final_path) 
         #call tracer for each traced line
         with open(linesFile) as fLines:
@@ -85,19 +92,23 @@ class TraceManager(gdb.Command):
                         for line in lines:
                             if (line["enabled"] and line["corrected"] not in tracedLines):
                                 tracedLines.append(line["corrected"])
+                                log.write(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                                 gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                 
                 #add tp_finish here
             #we need to have end commands executed before begin commands in order not to have to distinct segment overlap. 
             for cmd in begin_commands:
+                log.write(cmd)
                 gdb.execute(cmd)
             for cmd in end_commands:
+                log.write(cmd)
                 gdb.execute(cmd)
             #initialize tracer (after tracing so that it pushes back other tracepoints at the same location)
             with fdopen(finit,"w") as tmp:
                 tmp.write(
                     "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
                 )
+            log.write(patchCmd + "main "+ init_path)
             gdb.execute(patchCmd + "main "+ init_path)
             
         
@@ -107,9 +118,9 @@ def parse_response(response):
     space_split = response.split(' ')
     return space_split[-1]
 
-class TraceSegfaultCan(gdb.Command):
+class TraceCan(gdb.Command):
     def __init__(self):
-        super(TraceSegfaultCan, self).__init__("can_insert_file", gdb.COMMAND_DATA)
+        super(TraceCan, self).__init__("can_insert_file", gdb.COMMAND_DATA)
         
     def invoke(self, args, from_tty):
         #execute can trace commands
@@ -119,7 +130,6 @@ class TraceSegfaultCan(gdb.Command):
         
         lineFile = args
         fh, abs_path = mkstemp()
-        # log = open("log.txt","w")
         
         with fdopen(fh,'w') as new_file:
             with open(lineFile) as fLines:
@@ -148,5 +158,25 @@ class TraceSegfaultCan(gdb.Command):
         #Move new file
         move(abs_path, lineFile)
 
+
+class loadLibCommand(gdb.Command):
+    config = {}
+    def __init__(self):
+        traceFile = open(tracerConfig)
+        self.config = json.load(traceFile)
+        super(loadLibCommand, self).__init__('load_libtrace', gdb.COMMAND_DATA)
+
+    def invoke(self, arg, from_tty):
+        gdb.execute('compile extern void *__libc_dlopen_mode(char*, int);__libc_dlopen_mode("'+ self.config["library"] + '",0x80000000|0x2);')
+        finit, init_path = mkstemp()
+        with fdopen(finit,"w") as tmp:
+            tmp.write(
+                "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
+            )
+        # gdb.execute("compile file /home/pn/tests/VscodeTrace/example/minisnip.c")
+        gdb.execute("compile file "+ init_path)
+
+
+loadLibCommand()
 TraceManager()
-TraceSegfaultCan()
+TraceCan()

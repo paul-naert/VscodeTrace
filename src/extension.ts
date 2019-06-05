@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as vscodelc from 'vscode-languageclient';
-var fs = require('fs');
 import * as crypto from 'crypto';
 import { TextDocumentIdentifier, ReferencesRequest, ReferenceParams, Disposable } from 'vscode-languageclient';
 import { TraceDataProvider } from "./treeDataProvider";
@@ -11,13 +10,19 @@ import { TraceMetaData, displayPossibleTracepoints, tpMap, listTracableLines } f
 import { TraceCodeLensProvider } from './codelens';
 import * as child from 'child_process';
 
+var fs = require('fs');
+var ps = require('ps-node');
+var util = require('util');
+
 export const filePattern: string = '**/*.{' +
     ['cpp', 'c', 'cc', 'cxx', 'c++', 'm', 'mm', 'h', 'hh', 'hpp', 'hxx', 'inc'].join() + '}';
 
 export const cwd = vscode.workspace.workspaceFolders[0].uri.fsPath+'/';
 export const linesFileName = "lines.json";
 export const linesFilePath = cwd + linesFileName;
-export const gdbScript = cwd + "launch-python.gdb";
+export const gdbLaunch = cwd + "launch-python.gdb";
+export const gdbAttach = cwd + "attach.gdb";
+export const gdbDetach = cwd + "detach.gdb";
 
 var gdb : GDB
 var metaData : TraceMetaData
@@ -25,7 +30,7 @@ var lensProviderDisposable : Disposable
 var lensProviders = new  Map<string,TraceCodeLensProvider>();
 var binary = "";
 const gdbpath = "/home/pn/git/binutils-gdb/gdb/gdb";
-
+const traceFilePath = cwd + "trace.json"
 /**
  * Method to get workspace configuration option
  * @param option name of the option (e.g. for clangd.path should be path)
@@ -164,7 +169,7 @@ export function activate(context: vscode.ExtensionContext) {
             fs.copyFileSync(metaPaths[0].fsPath,linesFilePath);
             readMetaData(metaData)
             binary = metaData.binary;
-            gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+            gdb = new GDB(gdbpath, cwd + binary, gdbLaunch, gdbAttach, gdbDetach);
             vscode.commands.executeCommand("refreshTreeView");
         })
     }));
@@ -202,7 +207,10 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     function doDisplay(varname : string, references : vscodelc.Location[], hash : string, uri : vscode.Uri){
-        if (gdb == null) gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+        if (gdb == null){
+            gdb = new GDB(gdbpath, cwd + binary, gdbLaunch, gdbAttach, gdbDetach);
+        }
+
         if(metaData == null){
             metaData = resetMetaData ( uri.fsPath,binary);
         }
@@ -312,9 +320,11 @@ export function activate(context: vscode.ExtensionContext) {
     }));
 
     function traceAllLines(references : vscodelc.Location[], hash : string, uri : vscode.Uri){
-        if (gdb == null) gdb = new GDB(gdbpath, cwd + binary, gdbScript);
+        if (gdb == null){
+            gdb = new GDB(gdbpath, cwd + binary, gdbLaunch, gdbAttach, gdbDetach);
+        }
         var allLinesMetaData = resetMetaData ( uri.fsPath,binary);
-        
+
         var all_tps = listTracableLines(references, allLinesMetaData, gdb);
         console.log(all_tps);
         allLinesMetaData = resetMetaData (uri.fsPath, binary);
@@ -337,8 +347,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         readMetaData(allLinesMetaData);
         vscode.commands.executeCommand("do-trace");
-        await sleep(1000)
-        child.execSync("python "+cwd+"correct-trace.py");
+        await sleep(50)
+        child.execSync("python "+cwd+"correct-trace.py "+traceFilePath);
     }
     function sleep(ms:number){
         return new Promise(resolve=>{
@@ -347,6 +357,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
     context.subscriptions.push(vscode.commands.registerCommand('trace-all-lines', async () => {
         /* Add a tracepoint to each program line and display time taken per line */
+        editor = vscode.window.activeTextEditor!;
         const uri = vscode.Uri.file(editor.document.fileName);
         var all_lines : vscodelc.Location[] = [];
         for (let i = 1; i<editor.document.lineCount-2; i++){
@@ -384,8 +395,45 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.commands.executeCommand("refreshTreeView");
         }
     }));
-
     
+    class processPick implements vscode.QuickPickItem{
+        label :string;
+        description : string;
+        alwaysShow : boolean;
+    };
+
+    context.subscriptions.push(vscode.commands.registerCommand('attach', async () => {
+        ps.lookup({
+            command: binary
+            }, 
+            (err : any, resultList : any) => {
+            if (err) {
+                throw new Error( err );
+            }
+            let processList :processPick[] = [];
+            resultList.forEach(( process :any ) => {
+                if( process ){
+                    let formattedProcess = util.format('%s %s', process.command, process.arguments);
+                    processList.push({label : process.pid, description : formattedProcess, alwaysShow : true});
+                    console.log( 'PID: %s, COMMAND: %s, ARGUMENTS: %s', process.pid, process.command, process.arguments );
+                }
+            });
+            let processPromise = vscode.window.showQuickPick<processPick>(processList);
+            processPromise.then( (picked :processPick )=> {
+                if(gdb != undefined){
+                    gdb.attach(picked.label, linesFilePath); 
+                    vscode.commands.executeCommand("refreshTreeView");
+                }
+            });
+        });
+    }));
+    context.subscriptions.push(vscode.commands.registerCommand('detach', async () => {
+        if(gdb != undefined)
+        {
+            gdb.detach();
+        }
+    }));
+
 
     let traceTreeViewProvider = new TraceDataProvider(dirname(editor.document.uri.fsPath))
     vscode.window.registerTreeDataProvider('varTracking', traceTreeViewProvider);

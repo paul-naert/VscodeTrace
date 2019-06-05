@@ -85,8 +85,8 @@ extern "C" {
 #define MTR_MAX_ARGS 1
 
 // Only use the macros to call these.
-// void internal_mtr_raw_event(const char *category, const char *name, char ph, void *id);
-// void internal_mtr_raw_event_arg(const char *category, const char *name, char ph, void *id, mtr_arg_type arg_type, const char *arg_name, void *arg_value);
+// extern void internal_mtr_raw_event(const char *category, const char *name, char ph, void *id);
+// extern void internal_mtr_raw_event_arg(const char *category, const char *name, char ph, void *id, mtr_arg_type arg_type, const char *arg_name, void *arg_value);
 
 #ifndef MTR_ENABLED
 

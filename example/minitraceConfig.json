@@ -2,7 +2,7 @@
     "name": "minitrace",
     "header": "/home/pn/tests/VscodeTrace/example/minitrace.h",
     "library": "/home/pn/tests/VscodeTrace/example/minitrace.so",
-    "global_init": "const char traceFile[] = \"trace.json\"; \n mtr_init(traceFile); \n MTR_META_PROCESS_NAME(\"minitrace_test\"); MTR_META_THREAD_NAME(\"main thread\");",
+    "global_init": "const char traceFile[] = \"/home/pn/tests/VscodeTrace/example/trace.json\"; \n mtr_init(traceFile); \n MTR_META_PROCESS_NAME(\"minitrace_test\"); MTR_META_THREAD_NAME(\"main thread\");",
     "global_finish": "mtr_shutdown();",
     "flush": "mtr_flush();",
     "tracepoints": [
