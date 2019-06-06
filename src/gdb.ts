@@ -45,12 +45,14 @@ load_libtrace \n\
 traceFile "+ linesFile + "\n\
 patch store "+ patchStorage +"\n\
 q\n");
+	/* Not tracer agnostic ! */
 	fs.writeFileSync(this.detachScript,
 "attach " + pid + " \n\
 patch load " + patchStorage + " \n\
 patch delete 0\n\
 compile mtr_shutdown();\n\
-q\n");
+q\n"); 
+
 
 	child.execSync("cd "+ cwd +";" + this.gdbpath + " -x " + this.attachScript);
 	}
