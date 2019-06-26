@@ -167,7 +167,7 @@ export function activate(context: vscode.ExtensionContext) {
         metaPathPromise.then((metaPaths : vscode.Uri[])=> {
             vscode.commands.executeCommand("clear");
             fs.copyFileSync(metaPaths[0].fsPath,linesFilePath);
-            readMetaData(metaData)
+            metaData = readMetaData()
             binary = metaData.binary;
             gdb = new GDB(gdbpath, cwd + binary, gdbLaunch, gdbAttach, gdbDetach);
             vscode.commands.executeCommand("refreshTreeView");
@@ -198,12 +198,13 @@ export function activate(context: vscode.ExtensionContext) {
 
     }
     
-    function readMetaData(meta : TraceMetaData){
+    function readMetaData() :TraceMetaData{
         let linesFileContent = fs.readFileSync(linesFilePath).toString();
 
         let metaDatatext = JSON.parse(linesFileContent);
-        meta = new TraceMetaData(metaDatatext.source,metaDatatext.binary);
+        var meta = new TraceMetaData(metaDatatext.source,metaDatatext.binary);
         meta.varnames = new tpMap(metaDatatext.varnames.data);
+        return meta;
     }
 
     function doDisplay(varname : string, references : vscodelc.Location[], hash : string, uri : vscode.Uri){
@@ -221,7 +222,7 @@ export function activate(context: vscode.ExtensionContext) {
             [{ scheme: 'file', pattern: filePattern }],
             lensProvider
         );
-        readMetaData(metaData);
+        metaData = readMetaData();
         vscode.commands.executeCommand("refreshTreeView");
     }
 
@@ -345,7 +346,7 @@ export function activate(context: vscode.ExtensionContext) {
         
         displayPossibleTracepoints(varname, references, hash, allLinesMetaData, gdb, uri);
 
-        readMetaData(allLinesMetaData);
+        allLinesMetaData = readMetaData();
         vscode.commands.executeCommand("do-trace");
         await sleep(50)
         child.execSync("python "+cwd+"correct-trace.py "+traceFilePath);
@@ -437,7 +438,9 @@ export function activate(context: vscode.ExtensionContext) {
 
     let traceTreeViewProvider = new TraceDataProvider(dirname(editor.document.uri.fsPath))
     vscode.window.registerTreeDataProvider('varTracking', traceTreeViewProvider);
-    context.subscriptions.push(vscode.commands.registerCommand('refreshTreeView', () => traceTreeViewProvider.refresh()));
+    context.subscriptions.push(vscode.commands.registerCommand('refreshTreeView', () => {
+        traceTreeViewProvider.refresh();
+    }));
 
     const status = new FileStatus();
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(() => {
