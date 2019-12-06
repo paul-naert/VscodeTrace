@@ -6,7 +6,7 @@ import json
 patchCmd = "patch file "
 
 default_compile_args = "-O0 -gdwarf-4 -fPIE -Wall  -Wno-unused-but-set-variable -Wno-unused-variable -fno-stack-protector -w"
-tracerConfig = "minitraceConfig.json"
+tracerConfig = "/home/pn/tests/VscodeTrace/example/minitraceConfig.json"
 
 def varFormat(location, varname):
     filename,line = location.split(':')

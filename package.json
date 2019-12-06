@@ -39,10 +39,10 @@
     },
     "devDependencies": {
         "@types/mocha": "^2.2.32",
-        "@types/node": "^6.0.40",
+        "@types/node": "^6.14.9",
         "mocha": "^5.2.0",
         "typescript": "^2.0.3",
-        "vscode": "^1.1.0"
+        "vscode": "^1.1.36"
     },
     "repository": {
         "type": "git",
@@ -53,7 +53,7 @@
             "activitybar": [
                 {
                     "id": "package-explorer",
-                    "title": "Trace explorer",
+                    "title": "Module explorer",
                     "icon": "icons/dep.svg"
                 }
             ]
@@ -61,7 +61,7 @@
         "views": {
             "package-explorer": [
                 {
-                    "id": "varTracking",
+                    "id": "Module",
                     "name": " "
                 }
             ]
@@ -96,20 +96,6 @@
         },
         "commands": [
             {
-                "command": "man-tracepoint",
-                "title": "Add manual tracepoint"
-            },
-            {
-                "command": "add-tracepoints",
-                "title": "Add auto tracepoints",
-                "icon": "icons/magGlass.svg"
-            },
-            {
-                "command": "do-trace",
-                "title": "Start Tracing",
-                "icon": "icons/play.svg"
-            },
-            {
                 "command": "attach",
                 "title": "Attach to running process"
             },
@@ -124,30 +110,20 @@
             },
             {
                 "command": "clear",
-                "title": "Clear traced variables",
+                "title": "Clear view",
                 "icon": "icons/clear.svg"
             },
             {
-                "command": "import",
-                "title": "Import trace metadata file",
+                "command": "load-module",
+                "title": "Load a GDB module",
                 "icon": "icons/import.svg"
-            },
+            },            
             {
-                "command": "trace-all-lines",
-                "title": "Line diagnosis"
+                "command": "modCmd",
+                "title": "GDB Module : commands"
             }
         ],
         "keybindings": [
-            {
-                "command": "add-tracepoints",
-                "key": "Alt+shift+n",
-                "when": "editorTextFocus"
-            },
-            {
-                "command": "man-tracepoint",
-                "key": "Alt+shift+m",
-                "when": "editorTextFocus"
-            },
             {
                 "command": "attach",
                 "key": "Alt+shift+a",
@@ -159,51 +135,6 @@
                 "when": "editorTextFocus"
             }
         ],
-        "menus": {
-            "editor/context": [
-                {
-                    "command": "man-tracepoint",
-                    "group": "navigation"
-                },
-                {
-                    "command": "add-tracepoints",
-                    "group": "navigation"
-                }
-            ],
-            "view/title": [
-                {
-                    "command": "add-tracepoints",
-                    "when": "view == varTracking",
-                    "group": "navigation@3"
-                },
-                {
-                    "command": "do-trace",
-                    "when": "view == varTracking",
-                    "group": "navigation@4"
-                },
-                {
-                    "command": "refreshTreeView",
-                    "when": "view == varTracking",
-                    "group": "navigation@2"
-                },
-                {
-                    "command": "clear",
-                    "when": "view == varTracking",
-                    "group": "navigation@0"
-                },
-                {
-                    "command": "import",
-                    "when": "view == varTracking",
-                    "group": "navigation@1"
-                }
-            ],
-            "view/item/context": [
-                {
-                    "command": "clear",
-                    "when": "view == varTracking",
-                    "group": "navigation@0"
-                }
-            ]
-        }
+        "menus": {}
     }
 }
