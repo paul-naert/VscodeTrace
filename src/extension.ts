@@ -308,11 +308,12 @@ export function activate(context: vscode.ExtensionContext) {
                     let otherBinary = vscode.window.showOpenDialog({canSelectFolders : false, canSelectMany : false, openLabel : "Select binary"});
                     otherBinary.then((binaryUri: vscode.Uri[]) => {
                         binary = binaryUri[0].fsPath;
+                        doDisplay(varname,references,hash,uri);
                     })
                 } else {
                     binary = binaryPath;
+                    doDisplay(varname,references,hash,uri);
                 }
-                doDisplay(varname,references,hash,uri);
             });
         }
         else {

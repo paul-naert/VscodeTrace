@@ -1,8 +1,9 @@
 import * as child from 'child_process';
 import * as fs  from 'fs';
 import {cwd } from './extension'
-const logger = "tracer.py"
-const tracer = "traceManager.py"
+
+const logger = "/home/pn/tests/VscodeTrace/example/tracer.py"
+const tracer = "/home/pn/tests/VscodeTrace/example/traceManager.py"
 const patchStorage = ".gdbpatchdata"
 export class GDB {
 	gdbpath : string

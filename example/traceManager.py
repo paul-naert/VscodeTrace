@@ -7,7 +7,7 @@ import json
 canCmd = "patch where "
 patchCmd = "patch file "
 
-tracerConfig = "minitraceConfig.json"
+tracerConfig = "/home/pn/tests/VscodeTrace/example/minitraceConfig.json"
 
 def correct(line):
     last = line.split(' ')[-1]
@@ -71,6 +71,17 @@ class TraceManager(gdb.Command):
             end_commands = []
             if "varnames" in data:
                 varnames = data["varnames"]["data"]
+                # handle finish 
+                for varname in varnames:
+                    lines = varname["lines"]
+                    idField = varname["varname"]
+                    for line in lines:
+                        if (line["enabled"]):
+                            linemax = max([linemax,line["corrected"]])
+                # log.write(patchCmd + sourceFile + ':' + str(linemax) +" "+ final_path + '\n')
+                # gdb.execute(patchCmd + sourceFile + ':' + str(linemax) +" "+ final_path) 
+                
+                
                 for varname in varnames:
                     lines = varname["lines"]
                     idField = varname["varname"]
@@ -92,23 +103,23 @@ class TraceManager(gdb.Command):
                         for line in lines:
                             if (line["enabled"] and line["corrected"] not in tracedLines):
                                 tracedLines.append(line["corrected"])
-                                log.write(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
+                                log.write(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField + '\n')
                                 gdb.execute(self.logCmd + " count " + sourceFile + ':' + str(line["corrected"]) + ' ' + idField)
                 
                 #add tp_finish here
             #we need to have end commands executed before begin commands in order not to have to distinct segment overlap. 
             for cmd in begin_commands:
-                log.write(cmd)
+                log.write(cmd + '\n')
                 gdb.execute(cmd)
             for cmd in end_commands:
-                log.write(cmd)
+                log.write(cmd + '\n')
                 gdb.execute(cmd)
             #initialize tracer (after tracing so that it pushes back other tracepoints at the same location)
             with fdopen(finit,"w") as tmp:
                 tmp.write(
                     "#include \"" + self.config["header"] +"\" \n" + self.config["global_init"] 
                 )
-            log.write(patchCmd + "main "+ init_path)
+            log.write(patchCmd + "main "+ init_path + '\n')
             gdb.execute(patchCmd + "main "+ init_path)
             
         
