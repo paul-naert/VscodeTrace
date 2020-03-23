@@ -13,12 +13,14 @@ export class GDB {
 	detachScript : string
 	gdbProcess : child.ChildProcess
 	binary : string
-	constructor( path : string, bin : string, launch : string, attach : string, detach : string){
+	args : string
+	constructor( path : string, bin : string, args : string, launch : string, attach : string, detach : string){
 		this.gdbpath = path;
 		this.launchScript = launch;
 		this.attachScript = attach;
 		this.detachScript =detach;
 		this.binary = bin;
+		this.args = args;
 	}
 // 	public trace(linesFile : string){
 //         fs.writeFileSync(this.launchScript,"source "+logger+" \n\
@@ -40,7 +42,9 @@ export class GDB {
 		fs.writeFileSync(this.launchScript,
 			"#Automatic startup command file\n"+
 			"set pagination off\n"+
-			"file "+this.binary+"\n");
+			"file "+this.binary+"\n"+
+			"set args "+this.args+"\n");
+
 		this.preloadLibraries(module.libraries);
 		fs.appendFileSync(this.launchScript,
 			"start\n");

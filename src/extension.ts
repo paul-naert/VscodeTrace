@@ -28,7 +28,7 @@ var gdb : GDB
 var mod : GDBModule
 
 var binary = "";
-const gdbpath = "/home/pn/git/wip/binutils-gdb/gdb/gdb";
+const gdbpath = "/usr/bin/time /home/pn/git/wip/binutils-gdb/gdb/gdb";
 /**
  * Method to get workspace configuration option
  * @param option name of the option (e.g. for clangd.path should be path)
@@ -112,6 +112,7 @@ class GDBModule {
                 break;
             }
         }
+        args.push(vscode.window.activeTextEditor!.document.fileName)
         if(cmd.type == cmdType.lineCMD){
             let editor = vscode.window.activeTextEditor!;
             if(!editor.selection.isSingleLine){
@@ -194,22 +195,29 @@ export function activate(context: vscode.ExtensionContext) {
     /* MODULAR APP */
     context.subscriptions.push(vscode.commands.registerCommand('load-module', async () => {
         let binaryPromise = vscode.window.showQuickPick(findExecutables(cwd), { canPickMany: false, placeHolder : "binary name"});
-        binaryPromise.then((binaryPath: string) => {
+        binaryPromise.then(async (binaryPath: string) => {
             if (binaryPath == "other") {
                 let otherBinary = vscode.window.showOpenDialog({canSelectFolders : false, canSelectMany : false, openLabel : "Select binary",defaultUri : vscode.Uri.file(cwd)});
                 otherBinary.then((binaryUri: vscode.Uri[]) => {
                     binary = binaryUri[0].fsPath;
                 })
+                await otherBinary;
             } else {
                 binary = binaryPath;
             }
+            let call_args ="";
+            let argsPromise = vscode.window.showInputBox();
+            argsPromise.then((args: string) => {
+                call_args= args;
+                });
+            await argsPromise;
 
             let modulePathPromise = vscode.window.showOpenDialog({canSelectMany : false, defaultUri : vscode.Uri.file(cwd)});
             modulePathPromise.then((modulePaths : vscode.Uri[])=> {
                 // vscode.commands.executeCommand("clear");
-                gdb = new GDB(gdbpath, binary, gdbLaunch, gdbAttach, gdbDetach);
+                gdb = new GDB(gdbpath, binary, call_args, gdbLaunch, gdbAttach, gdbDetach);
                 mod = new GDBModule(modulePaths[0]);
-            })
+            });
         });
     }));
     context.subscriptions.push(vscode.commands.registerCommand('modCmd', async () => {
